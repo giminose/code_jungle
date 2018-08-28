@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="
+        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd">
+
+    <!-- BEGIN of GOV -->
+    <aop:aspectj-autoproxy/>
+
+    <bean id="tenantAdvice" class="tool.TenantAdvice"/>
+    <!-- GOV Data Source -->
+    <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource"  destroy-method="close">
+        <property name="driverClassName" value="${DATABASE.GOV.DRIVER}" />
+        <property name="url" value="${DATABASE.GOV.URL}" />
+        <property name="username" value="${DATABASE.GOV.USERNAME}" />
+        <property name="password">
+            <bean factory-bean="encryptedStrings" factory-method="getDecryptedValue">
+                <constructor-arg value="${DATABASE.GOV.PASSWORD}"/>
+            </bean>
+        </property>
+        <property name="testOnBorrow" value="true"/>
+        <property name="testWhileIdle" value="true"/>
+        <property name="testOnReturn" value="true"/>
+        <property name="validationQuery" value="select 1 from dual"/>
+        <property name="removeAbandoned" value="true"/>
+        <property name="logAbandoned" value="true"/>
+    </bean>
+    <bean id="schemaMultiTenantConnectionProvider" class="tool.SchemaMultiTenantConnectionProvider">
+        <constructor-arg ref="dataSource"/>
+    </bean>
+    <bean id="schemaCurrentTenantIdentifierResolver" class="tool.SchemaCurrentTenantIdentifierResolver">
+        <constructor-arg value="DEFAULT_SCHEMA"/>
+    </bean>
+    <!-- GOV Session Factory -->
+    <bean id="sessionFactory" class="org.springframework.orm.hibernate5.LocalSessionFactoryBean">
+        <property name="dataSource" ref="dataSource" />
+        <property name="packagesToScan">
+            <list>
+                <value>model.data</value>
+            </list>
+        </property>
+        <property name="hibernateProperties">
+            <map>
+                <entry key="hibernate.dialect" value="org.hibernate.dialect.Oracle10gDialect"/>
+                <entry key="hibernate.multi_tenant_connection_provider" value-ref="schemaMultiTenantConnectionProvider"/>
+                <entry key="hibernate.tenant_identifier_resolver" value-ref="schemaCurrentTenantIdentifierResolver"/>
+                <entry key="hibernate.multiTenancy" value="SCHEMA"/>
+            </map>
+        </property>
+    </bean>
+    <!-- GOV Transaction Manager -->
+    <bean id="txManager" class="org.springframework.orm.hibernate5.HibernateTransactionManager">
+        <property name="sessionFactory" ref="sessionFactory"/>
+        <property name="autodetectDataSource" value="false"/>
+    </bean>
+    <!-- END of GOV -->
+
+</beans>
