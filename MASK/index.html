@@ -1,0 +1,173 @@
+<html>
+<head>
+<style type="text/css">
+/*表頭*/
+#fiexd-header{
+    background:#FFFFFF;
+    color:#FFFFFF;
+    border-bottom:2px solid #FFFFFF;
+    width:100%;
+    position:fixed; /*固定位置定位*/
+    top:0; /*距離上方 0 像素*/
+    z-index:1; /*重疊時會在其他元素之上*/
+}
+#canvas {
+    width:2000px;
+    height:2000px;
+    border: 10px solid transparent;
+}
+.rectangle {
+    border: 1px solid #FF6600;
+    position: absolute;
+    background-color:#FF6600;
+}
+.scrollable {
+    overflow: auto;
+}
+</style>
+<script type="text/javascript" src="./jquery-2.0.0.js" ></script>
+<script type="text/javascript" src="./html2canvas.js"></script>
+<script type="text/javascript">
+(function(){
+    var txtId = 1;
+    var imgElement;
+    var canvas;
+    var mouse = {
+        x: 0,
+        y: 0,
+        startX: 0,
+        startY: 0
+    };
+    var maskCollection = [];
+    var createMask = false;
+    var setMousePosition = function(e) {
+        var ev = e || window.event; //Moz || IE
+        if (ev.pageX) { //Moz
+            mouse.x = ev.pageX;
+            mouse.y = ev.pageY;
+        } else if (ev.clientX) { //IE
+            mouse.x = ev.clientX + document.body.scrollLeft;
+            mouse.y = ev.clientY + document.body.scrollTop;
+        }
+    };
+
+    var canvasMouseMove = function(e) {
+        if (createMask) {
+            console.log('變更Mask大小');
+            setMousePosition(e);
+            console.log(mouse);
+            var mask = maskCollection[maskCollection.length -1 ];
+            var width = Math.abs(mouse.x - mouse.startX);
+            var height = Math.abs(mouse.y - mouse.startY);
+            var left = (mouse.x - mouse.startX < 0) ? mouse.x  : mouse.startX;
+            var top = (mouse.y - mouse.startY < 0) ? mouse.y  : mouse.startY;
+            mask.style.width = width + 'px';
+            mask.style.height = height + 'px';
+            mask.style.left = left + 'px';
+            mask.style.top = top + 'px';
+        }
+    };
+
+    var canvasMouseDown = function(e) {
+        console.log('開始建立Mask元素');
+        setMousePosition(e);
+        createMask = true;
+        mouse.startX = mouse.x;
+        mouse.startY = mouse.y;
+        var element = document.createElement('div');
+        element.id = 'mask_' + maskCollection.length ;
+        element.className = 'rectangle'
+        element.style.left = mouse.x + 'px';
+        element.style.top = mouse.y + 'px';
+        element.style.overflowy = "auto";
+        element.style.position = "absolute";
+        maskCollection.push(element);
+
+        canvas.appendChild(element)
+        canvas.style.cursor = "crosshair";
+        
+        console.log('監聽滑鼠移動事件來變更Mask大小')
+        canvas.addEventListener('mousemove', canvasMouseMove);
+    };
+
+    var canvasMouseUp = function(e) {
+        console.log('結束建立Mask元素');
+        canvas.removeEventListener('mousemove', canvasMouseMove);
+        if (createMask) {
+            createMask = false;
+            document.getElementById('mask_' + (maskCollection.length - 1)).style.border='1px solid #ffffff';
+            document.getElementById('mask_' + (maskCollection.length - 1)).style.background='#ffffff';
+        }
+        if (maskCollection.length > 0) {
+            document.getElementById('btnRemov').disabled=false;
+        }
+    }
+    
+    $(function () {
+        imgElement = document.getElementById('oImage');
+        canvas = document.getElementById("canvas");
+        canvas.style.height=imgElement.offsetHeight+"px";
+        canvas.style.width =imgElement.offsetWidth+"px";
+        
+        // 禁止底圖被拖動
+        $('#oImage').on('dragstart', function(event) { event.preventDefault(); });
+
+        // 移除最後一個Mask
+        $("#btnRemov").click(function () {
+            var lastMask = maskCollection.pop();
+            lastMask.remove();
+            if (maskCollection.length === 0) {
+                this.disabled = true;
+            }
+        });
+        
+        // 遮罩控制器
+        $("#btnSave").click(function () {
+            if ( this.value=='開始遮罩'){
+                // 開始遮罩，監聽canvas滑鼠事件
+                canvas.addEventListener('mousedown', canvasMouseDown);
+                canvas.addEventListener('mouseup', canvasMouseUp);
+
+                alert('開始遮罩！');
+                $("#lblMsg").text('直接以滑鼠框選遮蓋範圍，並可進行多處位置遮罩，工作完畢後需「儲存遮罩」才完成遮罩工作。');
+                $("#btnSave").val('儲存遮罩'); 
+            } else {
+                // 結束遮罩，停止監聽canvas滑鼠事件
+                canvas.removeEventListener('mousedown', canvasMouseDown);
+                canvas.removeEventListener('mouseup', canvasMouseUp);
+
+                $("#lblMsg").text('儲存中…請稍候');
+                $("#btnSave").prop("disabled", true);
+                html2canvas($("#canvas"), {
+                    onrendered: function(canvas) {
+                        var image = canvas.toDataURL("image/png");
+                        image = image.replace('data:image/png;base64,', '');
+                        console.log(image);
+                        $("#btnSave").val('開始遮罩');
+                        $("#btnSave").prop("disabled", false);
+                        $("#lblMsg").text('');
+                        $("#btnRemov").prop("disabled", true);
+                    }
+                });
+            }
+        });
+    });
+})();
+</script>
+</head>
+<body>
+    <form id="form1"  action="">
+        <div id="fiexd-header"  >
+            <input type="button" id="btnPre" value="回上頁" name="btnPre"/>
+            <input type="button" id="Button3" value="原圖重設"  name="btnESC" />
+            <input type="button" id="btnRemov" value="還原上一步" disabled="disabled" />
+            <input type="button" id="btnSave" name="btnSave" value="開始遮罩"  />
+            <span id="lblMsg"   style="color:Red"></span>
+        </div>
+        <br/><br/>
+        <div id="canvas" style="width:1000px; height:1000px;" >
+            <img id="oImage" src="ling_1.jpg" style="max-width:300%;max-height:300%;position: absolute"/>
+        </div>
+    </form>
+</body>
+</html>
