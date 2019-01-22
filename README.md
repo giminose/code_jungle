@@ -6,3 +6,4 @@
 5. [google_api_wms_wmts.js](/google_api_wms_wmts.js): GOOGLE MAP API WMS範例
 6. [on-demand-rest.java](/on-demand-rest.java): 取得任意PathParameters
 7. [FontExportTest.java](/FontExportTest.java): 套用字型檔案匯出圖片
+8. [VA16TypeB.java](/VA16TypeB.java): 虛擬帳號16碼連同金額做檢核，檢查碼種類=B
